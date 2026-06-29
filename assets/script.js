@@ -16,6 +16,7 @@
   const card = document.querySelector(".card");
 
   let data = null;
+  let dataPromise = null;
   let currentName = "image.png";
   let objectUrl = null;
 
@@ -58,6 +59,9 @@
 
     for (const url of urls) {
       try {
+        const absoluteUrl = new URL(url, location.href).href;
+        console.log("trying data url:", url, absoluteUrl);
+
         const res = await fetch(url, { cache: "no-store" });
 
         if (res.ok) {
@@ -71,6 +75,33 @@
     }
 
     throw new Error(`data not found: ${errors.join(" / ")}`);
+  }
+
+  async function loadData() {
+    if (data) {
+      return data;
+    }
+
+    const p = pageInfo();
+
+    currentName = p.imageName;
+
+    if (listLink) {
+      listLink.href = p.listUrl;
+    }
+
+    data = await fetchFirstJson(p.dataUrls);
+    currentName = data.name || p.imageName;
+
+    return data;
+  }
+
+  function ensureDataLoadingStarted() {
+    if (!dataPromise) {
+      dataPromise = loadData();
+    }
+
+    return dataPromise;
   }
 
   function base64ToBytes(source) {
@@ -130,7 +161,7 @@
 
   function restore(password) {
     if (!data) {
-      throw new Error("data not loaded");
+      throw new Error("still loading");
     }
 
     const cipher = base64ToBytes(data.ciphertext);
@@ -194,10 +225,14 @@
 
     viewer.hidden = true;
     button.disabled = true;
-    msg("opening...");
+    msg("loading...");
 
     setTimeout(async () => {
       try {
+        await ensureDataLoadingStarted();
+
+        msg("opening...");
+
         const imageData = restore(input.value);
         const blob = await imageDataToBlob(imageData);
 
@@ -255,29 +290,16 @@
     try {
       if (location.protocol === "file:") {
         msg("use local server");
+      } else {
+        msg("loading...");
       }
 
-      const p = pageInfo();
-
-      currentName = p.imageName;
-
-      if (listLink) {
-        listLink.href = p.listUrl;
-      }
-
-      data = await fetchFirstJson(p.dataUrls);
-
-      currentName = data.name || p.imageName;
+      await ensureDataLoadingStarted();
 
       msg("");
     } catch (error) {
       console.error(error);
-
-      // data取得に失敗してもボタン自体は押せるままにしておく。
-      // 押した場合は restore() 側で "data not loaded" が出る。
       msg(error.message || "failed");
-    } finally {
-      button.disabled = false;
     }
   })();
 })();

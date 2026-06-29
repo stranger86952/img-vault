@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import getpass
 import json
 import mimetypes
@@ -176,6 +175,7 @@ def rebuild_index() -> None:
     if DATA.exists():
         for p in sorted(DATA.glob("*.json"), key=lambda x: x.name.lower()):
             name = p.name[:-5]
+
             if (I / name / "index.html").exists():
                 items.append(name)
 
@@ -187,31 +187,64 @@ def rebuild_index() -> None:
     else:
         lis = "        <li><span>no images</span></li>"
 
-    html = (
-        '<!doctype html>\n'
-        '<html lang="ja">'
-        '<head>'
-        '<meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<title>Images</title>'
-        '<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">'
-        '<link rel="stylesheet" href="../assets/style.css">'
-        '</head>'
-        '<body>'
-        '<main class="wrap">'
-        '<section class="card list-card">'
-        '<h1 class="list-title">Images</h1>'
-        '<ul class="image-list">\n'
-        + lis +
-        '\n      </ul>'
-        '</section>'
-        '</main>'
-        '</body>'
-        '</html>'
-    )
+    index_html = f"""<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Images</title>
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="card list-card">
+      <h1 class="list-title">Images</h1>
+      <ul class="image-list">
+{lis}
+      </ul>
+
+      <nav class="corner-links" aria-label="site links">
+        <a class="corner-button corner-left" href="../README.md/" aria-label="README">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H20v16H7.5A2.5 2.5 0 0 0 5 21.5v-16z"></path>
+            <path d="M5 5.5A2.5 2.5 0 0 0 2.5 3H2v16h.5A2.5 2.5 0 0 1 5 21.5"></path>
+          </svg>
+        </a>
+
+        <a id="repoLink" class="corner-button corner-right" href="https://github.com/" target="_blank" rel="noopener" aria-label="repository">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 18.5c-3 .8-3-1.5-4.2-2"></path>
+            <path d="M16 22v-3.9a3.4 3.4 0 0 0-.9-2.6c3-.3 6.1-1.5 6.1-6.6a5.2 5.2 0 0 0-1.4-3.6 4.8 4.8 0 0 0-.1-3.6s-1.1-.3-3.7 1.4a12.5 12.5 0 0 0-6.7 0C6.7 1.4 5.6 1.7 5.6 1.7a4.8 4.8 0 0 0-.1 3.6A5.2 5.2 0 0 0 4.1 9c0 5.1 3.1 6.3 6.1 6.6a3 3 0 0 0-.8 1.9V22"></path>
+          </svg>
+        </a>
+      </nav>
+    </section>
+  </main>
+
+  <script>
+    (() => {{
+      const link = document.getElementById("repoLink");
+      if (!link) return;
+
+      const host = location.hostname;
+      if (!host.endsWith(".github.io")) return;
+
+      const owner = host.replace(/\\.github\\.io$/, "");
+      const parts = location.pathname.split("/").filter(Boolean);
+      const repo = parts[0] && parts[0] !== "i" && parts[0] !== "README.md"
+        ? parts[0]
+        : `${{owner}}.github.io`;
+
+      link.href = `https://github.com/${{owner}}/${{repo}}`;
+    }})();
+  </script>
+</body>
+</html>
+"""
 
     I.mkdir(exist_ok=True)
-    (I / "index.html").write_text(html, encoding="utf-8")
+    (I / "index.html").write_text(index_html, encoding="utf-8")
 
 
 def write_outputs(image_path: Path, meta: dict, cipher: bytes, force: bool) -> tuple[Path, Path, Path]:
@@ -252,27 +285,17 @@ def parse_args() -> argparse.Namespace:
         description="画像ファイルを GitHub Pages 用のパスワード付き data に変換します。"
     )
 
-    parser.add_argument("image", nargs="?", help="例: ./p/sample.jpg")
+    parser.add_argument("image", help="例: ./p/sample.jpg")
     parser.add_argument("--password", help="省略時は対話入力します。")
     parser.add_argument("--rounds", type=int, default=0, help="追加ハッシュ回数。既定: 0")
     parser.add_argument("--id", dest="file_id", help="seed に混ぜる固定 ID。既定: /i/<filename>/")
     parser.add_argument("--force", action="store_true", help="既存ファイルを上書きします。")
-    parser.add_argument("--rebuild-index", action="store_true", help="i/index.html だけ再生成します。")
 
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-
-    if args.rebuild_index and not args.image:
-        rebuild_index()
-        print("generated: i/index.html")
-        return 0
-
-    if not args.image:
-        print("error: image is required unless --rebuild-index is used", file=sys.stderr)
-        return 1
 
     if args.rounds < 0:
         print("error: --rounds は 0 以上にしてください。", file=sys.stderr)

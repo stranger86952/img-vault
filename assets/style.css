@@ -19,7 +19,7 @@ body {
   padding: 14px;
 }
 
-/* common card */
+/* card */
 .card {
   position: relative;
 
@@ -27,14 +27,10 @@ body {
   min-height: min(620px, calc(100vh - 28px));
 
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-content: center;
   gap: 14px;
 
-  /*
-    list ボタンを absolute で左上固定にするため、
-    上だけ常にスペースを確保する。
-    これで開く前/後で高さが変わらないし、画像とも被らない。
-  */
   padding: 54px 18px 18px;
 
   background: rgba(255, 255, 255, 0.9);
@@ -44,20 +40,19 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* image page */
 .image-card {
   width: min(1080px, 100%);
 }
 
-/* list page */
 .list-card {
   width: min(1080px, 100%);
   min-height: auto;
-  place-items: stretch;
   align-content: start;
+  align-items: stretch;
+  justify-items: stretch;
 }
 
-/* fixed list button */
+/* top-left list button */
 .back-link {
   position: absolute;
   top: 14px;
@@ -171,7 +166,8 @@ body {
 }
 
 .button:hover,
-.download:hover {
+.download:hover,
+.corner-button:hover {
   filter: brightness(1.08);
 }
 
@@ -186,7 +182,7 @@ body {
 
 /* opened state */
 .card.opened {
-  place-items: center;
+  align-content: center;
 }
 
 .card.opened .lock,
@@ -213,7 +209,7 @@ body {
   display: block;
 
   max-width: 100%;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 190px);
   width: auto;
   height: auto;
   object-fit: contain;
@@ -251,6 +247,51 @@ body {
 
 .download.secondary {
   background: #777;
+}
+
+/* bottom center links */
+.corner-links {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+
+  margin-top: 2px;
+}
+
+.corner-button {
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 999px;
+
+  color: #555;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  text-decoration: none;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+}
+
+.corner-button:hover {
+  color: #111;
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.corner-button svg {
+  width: 21px;
+  height: 21px;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* /i/ list page */
@@ -321,7 +362,17 @@ body {
   }
 
   #image {
-    max-height: calc(100vh - 140px);
+    max-height: calc(100vh - 165px);
     border-radius: 14px;
+  }
+
+  .corner-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .corner-button svg {
+    width: 19px;
+    height: 19px;
   }
 }

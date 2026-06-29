@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Locked Image</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="card" aria-label="locked image">
+      <a id="listLink" class="back-link" href="../" aria-label="back to list">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>list</span>
+      </a>
+
+      <div class="lock" aria-hidden="true">
+        <svg viewBox="0 0 64 64">
+          <path d="M20 28v-8a12 12 0 0 1 24 0v8"/>
+          <rect x="14" y="28" width="36" height="28" rx="8"/>
+          <circle cx="32" cy="41" r="4"/>
+          <path d="M32 45v5"/>
+        </svg>
+      </div>
+
+      <form id="form" class="form" autocomplete="off">
+        <input id="password" class="password" type="password" placeholder="password" autocomplete="current-password" autofocus>
+        <button id="button" class="button" type="submit">open</button>
+      </form>
+
+      <p id="status" class="status"></p>
+
+      <div id="viewer" class="viewer" hidden>
+        <img id="image" alt="restored image">
+        <div class="viewer-actions">
+          <button id="retry" class="download secondary" type="button">retry</button>
+          <a id="openImage" class="download secondary" href="#" target="_blank" rel="noopener">open</a>
+          <button id="download" class="download" type="button">download</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../../assets/script.js"></script>
+</body>
+</html>

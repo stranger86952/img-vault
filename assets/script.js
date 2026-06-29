@@ -15,9 +15,10 @@
   const listLink = $("listLink");
   const card = document.querySelector(".card");
 
-  let data = null;
+  let meta = null;
+  let encryptedBytes = null;
   let dataPromise = null;
-  let currentName = "image.png";
+  let currentName = "image";
   let objectUrl = null;
 
   const msg = (text) => {
@@ -46,7 +47,7 @@
     return {
       imageName,
       listUrl: `${prefix}/i/`,
-      dataUrls: [
+      metaUrls: [
         `../../data/${encodedName}.json`,
         `${prefix}/data/${encodedName}.json`,
         `/data/${encodedName}.json`
@@ -60,12 +61,15 @@
     for (const url of urls) {
       try {
         const absoluteUrl = new URL(url, location.href).href;
-        console.log("trying data url:", url, absoluteUrl);
+        console.log("trying meta url:", url, absoluteUrl);
 
         const res = await fetch(url, { cache: "no-store" });
 
         if (res.ok) {
-          return await res.json();
+          return {
+            json: await res.json(),
+            url: res.url
+          };
         }
 
         errors.push(`${url} (${res.status})`);
@@ -77,9 +81,21 @@
     throw new Error(`data not found: ${errors.join(" / ")}`);
   }
 
-  async function loadData() {
-    if (data) {
-      return data;
+  async function fetchBytes(url) {
+    console.log("trying bin url:", url);
+
+    const res = await fetch(url, { cache: "no-store" });
+
+    if (!res.ok) {
+      throw new Error(`bin not found: ${url} (${res.status})`);
+    }
+
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  async function loadDataPackage() {
+    if (meta && encryptedBytes) {
+      return { meta, encryptedBytes };
     }
 
     const p = pageInfo();
@@ -90,29 +106,31 @@
       listLink.href = p.listUrl;
     }
 
-    data = await fetchFirstJson(p.dataUrls);
-    currentName = data.name || p.imageName;
+    const loaded = await fetchFirstJson(p.metaUrls);
+    meta = loaded.json;
 
-    return data;
+    if (!meta.dataFile) {
+      throw new Error("bad meta: dataFile is missing");
+    }
+
+    currentName = meta.name || p.imageName;
+
+    const binUrl = new URL(meta.dataFile, loaded.url).href;
+    encryptedBytes = await fetchBytes(binUrl);
+
+    if (typeof meta.source?.originalBytes === "number" && encryptedBytes.length !== meta.source.originalBytes) {
+      console.warn(`bin size mismatch: ${encryptedBytes.length} != ${meta.source.originalBytes}`);
+    }
+
+    return { meta, encryptedBytes };
   }
 
   function ensureDataLoadingStarted() {
     if (!dataPromise) {
-      dataPromise = loadData();
+      dataPromise = loadDataPackage();
     }
 
     return dataPromise;
-  }
-
-  function base64ToBytes(source) {
-    const bin = atob(source);
-    const out = new Uint8Array(bin.length);
-
-    for (let i = 0; i < bin.length; i++) {
-      out[i] = bin.charCodeAt(i);
-    }
-
-    return out;
   }
 
   function hash128(str) {
@@ -159,37 +177,39 @@
     };
   }
 
-  function restore(password) {
-    if (!data) {
-      throw new Error("still loading");
+  function decryptBytes(password) {
+    if (!meta || !encryptedBytes) {
+      throw new Error("loading...");
     }
 
-    const cipher = base64ToBytes(data.ciphertext);
-    const expected = data.width * data.height * 4;
+    let seed = hash128(`imgpass-v7\n${meta.id || meta.name}\n${password}`);
 
-    if (cipher.length !== expected) {
-      throw new Error(`bad data: ${cipher.length} != ${expected}`);
-    }
-
-    let seed = hash128(`imgpass-v6\n${data.id || data.name}\n${password}`);
-
-    for (let i = 0; i < (data.rounds || 0); i++) {
+    for (let i = 0; i < (meta.rounds || 0); i++) {
       seed = hash128(seed.join(":") + ":" + i);
     }
 
     const next = prng(seed);
-    const plain = new Uint8ClampedArray(cipher.length);
+    const plain = new Uint8Array(encryptedBytes.length);
 
-    for (let i = 0; i < cipher.length; i += 4) {
+    for (let i = 0; i < encryptedBytes.length; i += 4) {
       const r = next();
 
-      plain[i] = cipher[i] ^ (r & 255);
-      plain[i + 1] = cipher[i + 1] ^ ((r >>> 8) & 255);
-      plain[i + 2] = cipher[i + 2] ^ ((r >>> 16) & 255);
-      plain[i + 3] = cipher[i + 3] ^ ((r >>> 24) & 255);
+      plain[i] = encryptedBytes[i] ^ (r & 255);
+
+      if (i + 1 < encryptedBytes.length) {
+        plain[i + 1] = encryptedBytes[i + 1] ^ ((r >>> 8) & 255);
+      }
+
+      if (i + 2 < encryptedBytes.length) {
+        plain[i + 2] = encryptedBytes[i + 2] ^ ((r >>> 16) & 255);
+      }
+
+      if (i + 3 < encryptedBytes.length) {
+        plain[i + 3] = encryptedBytes[i + 3] ^ ((r >>> 24) & 255);
+      }
     }
 
-    return new ImageData(plain, data.width, data.height);
+    return plain;
   }
 
   function revokeObjectUrl() {
@@ -199,25 +219,37 @@
     }
   }
 
-  function imageDataToBlob(imageData) {
-    const canvas = document.createElement("canvas");
-
-    canvas.width = imageData.width;
-    canvas.height = imageData.height;
-    canvas.getContext("2d").putImageData(imageData, 0, 0);
-
+  function waitForImageLoad(imageElement) {
     return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("blob failed"));
-          }
-        },
-        "image/png"
-      );
+      imageElement.onload = () => resolve();
+      imageElement.onerror = () => reject(new Error("wrong password or broken image"));
     });
+  }
+
+  async function showImage(password) {
+    await ensureDataLoadingStarted();
+
+    msg("opening...");
+
+    const plainBytes = decryptBytes(password);
+    const mime = meta.mime || "application/octet-stream";
+    const blob = new Blob([plainBytes], { type: mime });
+
+    revokeObjectUrl();
+
+    objectUrl = URL.createObjectURL(blob);
+
+    const loading = waitForImageLoad(img);
+
+    img.src = objectUrl;
+    openImage.href = objectUrl;
+
+    await loading;
+
+    viewer.hidden = false;
+    card.classList.add("opened");
+
+    msg("");
   }
 
   form.addEventListener("submit", (ev) => {
@@ -229,26 +261,15 @@
 
     setTimeout(async () => {
       try {
-        await ensureDataLoadingStarted();
-
-        msg("opening...");
-
-        const imageData = restore(input.value);
-        const blob = await imageDataToBlob(imageData);
+        await showImage(input.value);
+      } catch (error) {
+        console.error(error);
 
         revokeObjectUrl();
 
-        objectUrl = URL.createObjectURL(blob);
+        img.removeAttribute("src");
+        openImage.href = "#";
 
-        img.src = objectUrl;
-        openImage.href = objectUrl;
-
-        viewer.hidden = false;
-        card.classList.add("opened");
-
-        msg("");
-      } catch (error) {
-        console.error(error);
         msg(error.message || "failed");
       } finally {
         button.disabled = false;
@@ -278,10 +299,7 @@
 
     const a = document.createElement("a");
 
-    a.download = currentName.toLowerCase().endsWith(".png")
-      ? currentName
-      : `${currentName}.png`;
-
+    a.download = currentName;
     a.href = objectUrl;
     a.click();
   });
@@ -300,6 +318,8 @@
     } catch (error) {
       console.error(error);
       msg(error.message || "failed");
+    } finally {
+      button.disabled = false;
     }
   })();
 })();

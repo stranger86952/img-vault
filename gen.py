@@ -1,71 +1,325 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, base64, getpass, json, shutil, sys
+
+import argparse
+import base64
+import getpass
+import json
+import mimetypes
+import shutil
+import sys
 from pathlib import Path
+from urllib.parse import quote
+
 try:
-    from PIL import Image, ImageSequence
+    from PIL import Image
 except ImportError:
-    print("Pillow が必要です。例: python -m pip install pillow", file=sys.stderr)
-    raise
-ROOT=Path(__file__).resolve().parent; DATA=ROOT/'data'; I=ROOT/'i'; TPL=ROOT/'assets'/'tpl.html'
-def u32(x): return x & 0xffffffff
-def imul(a,b): return ((a&0xffffffff)*(b&0xffffffff))&0xffffffff
-def hash128(s:str):
-    h1,h2,h3,h4=0xdeadbeef,0x41c6ce57,0x9e3779b9,0x85ebca6b
+    Image = None
+
+
+ROOT = Path(__file__).resolve().parent
+ASSETS = ROOT / "assets"
+DATA = ROOT / "data"
+I = ROOT / "i"
+TPL = ASSETS / "tpl.html"
+
+
+def u32(x: int) -> int:
+    return x & 0xFFFFFFFF
+
+
+def imul(a: int, b: int) -> int:
+    return ((a & 0xFFFFFFFF) * (b & 0xFFFFFFFF)) & 0xFFFFFFFF
+
+
+def hash128(s: str) -> list[int]:
+    h1, h2, h3, h4 = 0xDEADBEEF, 0x41C6CE57, 0x9E3779B9, 0x85EBCA6B
+
     for ch in s:
-        k=ord(ch); h1=imul(h1^k,2654435761); h2=imul(h2^k,1597334677); h3=imul(h3^k,2246822507); h4=imul(h4^k,3266489909)
-    h1=u32(h1^(h1>>16)); h2=u32(h2^(h2>>15)); h3=u32(h3^(h3>>16)); h4=u32(h4^(h4>>15))
-    return [h1 or 0x243f6a88,h2 or 0x85a308d3,h3 or 0x13198a2e,h4 or 0x03707344]
+        k = ord(ch)
+        h1 = imul(h1 ^ k, 2654435761)
+        h2 = imul(h2 ^ k, 1597334677)
+        h3 = imul(h3 ^ k, 2246822507)
+        h4 = imul(h4 ^ k, 3266489909)
+
+    h1 = u32(h1 ^ (h1 >> 16))
+    h2 = u32(h2 ^ (h2 >> 15))
+    h3 = u32(h3 ^ (h3 >> 16))
+    h4 = u32(h4 ^ (h4 >> 15))
+
+    return [
+        h1 or 0x243F6A88,
+        h2 or 0x85A308D3,
+        h3 or 0x13198A2E,
+        h4 or 0x03707344,
+    ]
+
+
 class PRNG:
-    def __init__(self,seed): self.a,self.b,self.c,self.d=seed
-    def next(self):
-        t=u32(self.a ^ u32(self.a<<11)); self.a,self.b,self.c=self.b,self.c,self.d; self.d=u32(self.d ^ (self.d>>19) ^ t ^ (t>>8)); return self.d
-def xor_stream(buf:bytes, seed):
-    p=PRNG(seed); out=bytearray(len(buf))
-    for i in range(0,len(buf),4):
-        r=p.next(); out[i]=buf[i]^(r&255)
-        if i+1<len(buf): out[i+1]=buf[i+1]^((r>>8)&255)
-        if i+2<len(buf): out[i+2]=buf[i+2]^((r>>16)&255)
-        if i+3<len(buf): out[i+3]=buf[i+3]^((r>>24)&255)
+    def __init__(self, seed: list[int]):
+        self.a, self.b, self.c, self.d = seed
+
+    def next(self) -> int:
+        t = u32(self.a ^ u32(self.a << 11))
+        self.a, self.b, self.c = self.b, self.c, self.d
+        self.d = u32(self.d ^ (self.d >> 19) ^ t ^ (t >> 8))
+        return self.d
+
+
+def make_seed(password: str, file_id: str, rounds: int) -> list[int]:
+    seed = hash128(f"imgpass-v7\n{file_id}\n{password}")
+
+    for i in range(rounds):
+        seed = hash128(":".join(map(str, seed)) + ":" + str(i))
+
+    return seed
+
+
+def xor_stream(buf: bytes, seed: list[int]) -> bytes:
+    prng = PRNG(seed)
+    out = bytearray(len(buf))
+
+    for i in range(0, len(buf), 4):
+        r = prng.next()
+
+        out[i] = buf[i] ^ (r & 255)
+
+        if i + 1 < len(buf):
+            out[i + 1] = buf[i + 1] ^ ((r >> 8) & 255)
+
+        if i + 2 < len(buf):
+            out[i + 2] = buf[i + 2] ^ ((r >> 16) & 255)
+
+        if i + 3 < len(buf):
+            out[i + 3] = buf[i + 3] ^ ((r >> 24) & 255)
+
     return bytes(out)
-def load_rgba(path):
-    with Image.open(path) as im:
-        frames=getattr(im,'n_frames',1) or 1
-        frame=next(ImageSequence.Iterator(im)).copy() if frames>1 else im.copy()
-        rgba=frame.convert('RGBA')
-        return rgba.width,rgba.height,rgba.tobytes(),{'format':im.format or 'UNKNOWN','frames':int(frames),'mode':im.mode,'note':'Stored as RGBA pixels. Not exact original file bytes.'}
-def build(path,pw,rounds,file_id):
-    name=path.name; w,h,plain,source=load_rgba(path); actual_id=file_id or f'/i/{name}/'; seed=hash128(f'imgpass-v6\n{actual_id}\n{pw}')
-    for i in range(rounds): seed=hash128(':'.join(map(str,seed))+':'+str(i))
-    cipher=xor_stream(plain,seed)
-    return {'version':6,'type':'raw-rgba-xor-xorshift128-fast-seed','name':name,'id':actual_id,'source':source,'width':w,'height':h,'channels':4,'rounds':rounds,'ciphertextEncoding':'base64','ciphertext':base64.b64encode(cipher).decode('ascii')}
-def rebuild_index():
-    items=[]
-    if DATA.exists():
-        for p in sorted(DATA.glob('*.json'), key=lambda x:x.name.lower()):
-            name=p.name[:-5]
-            if (I/name/'index.html').exists(): items.append(name)
-    lis='\n'.join(f'        <li><a href="./{name}/">{name}</a></li>' for name in items) or '        <li><span>no images</span></li>'
-    html='<!doctype html>\n<html lang="ja">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>Images</title>\n  <link rel="icon" href="../assets/icon.png" type="image/png">\n  <link rel="apple-touch-icon" href="../assets/icon.png">\n  <link rel="stylesheet" href="../assets/style.css">\n</head>\n<body>\n  <main class="wrap">\n  <section class="card list-card">\n    <h1 class="list-title">Images</h1>\n    <ul class="image-list">\n'+lis+'\n      </ul>\n    </section>\n  </main>\n</body>\n</html>'
-    I.mkdir(exist_ok=True); (I/'index.html').write_text(html,encoding='utf-8')
-def main():
-    ap=argparse.ArgumentParser(description='画像から GitHub Pages 用のパスワード画像 data を生成します。')
-    ap.add_argument('image', nargs='?'); ap.add_argument('--password'); ap.add_argument('--rounds',type=int,default=0); ap.add_argument('--id',dest='file_id'); ap.add_argument('--force',action='store_true'); ap.add_argument('--rebuild-index',action='store_true')
-    a=ap.parse_args()
-    if a.rebuild_index and not a.image: rebuild_index(); print('generated: i/index.html'); return 0
-    if not a.image: ap.error('image is required unless --rebuild-index is used')
-    path=Path(a.image); path=(Path.cwd()/path).resolve() if not path.is_absolute() else path
-    if not path.exists(): print(f'画像ファイルが存在しません: {path}',file=sys.stderr); return 1
-    pw=a.password
-    if pw is None:
-        pw=getpass.getpass('password: '); pw2=getpass.getpass('password again: ')
-        if pw!=pw2: print('パスワードが一致しません。',file=sys.stderr); return 1
+
+
+def detect_image_info(path: Path) -> dict:
+    mime, _ = mimetypes.guess_type(path.name)
+
+    info = {
+        "mime": mime or "application/octet-stream",
+        "format": "UNKNOWN",
+        "width": None,
+        "height": None,
+        "note": "Stored as encrypted original file bytes. Not expanded to RGBA.",
+    }
+
+    if Image is None:
+        return info
+
     try:
-        data=build(path,pw,a.rounds,a.file_id); page=I/path.name/'index.html'; data_path=DATA/f'{path.name}.json'; page.parent.mkdir(parents=True,exist_ok=True); DATA.mkdir(exist_ok=True)
-        for p in (page,data_path):
-            if p.exists() and not a.force: raise FileExistsError(f'{p} は既にあります。--force で上書きできます。')
-        shutil.copyfile(TPL,page); data_path.write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')),encoding='utf-8'); rebuild_index()
+        with Image.open(path) as im:
+            info["format"] = im.format or "UNKNOWN"
+            info["width"] = im.width
+            info["height"] = im.height
+
+            if im.format:
+                fmt = im.format.lower()
+
+                if fmt == "jpeg":
+                    info["mime"] = "image/jpeg"
+                elif fmt == "png":
+                    info["mime"] = "image/png"
+                elif fmt == "webp":
+                    info["mime"] = "image/webp"
+                elif fmt == "gif":
+                    info["mime"] = "image/gif"
+                elif fmt == "bmp":
+                    info["mime"] = "image/bmp"
+                elif fmt in ("tiff", "tif"):
+                    info["mime"] = "image/tiff"
+
+    except Exception:
+        pass
+
+    return info
+
+
+def build_data(image_path: Path, password: str, rounds: int, file_id: str | None) -> tuple[dict, bytes]:
+    name = image_path.name
+    actual_id = file_id or f"/i/{name}/"
+
+    plain = image_path.read_bytes()
+    seed = make_seed(password, actual_id, rounds)
+    cipher = xor_stream(plain, seed)
+
+    image_info = detect_image_info(image_path)
+
+    meta = {
+        "version": 7,
+        "type": "file-bytes-xor-xorshift128-fast-seed",
+        "name": name,
+        "id": actual_id,
+        "mime": image_info["mime"],
+        "source": {
+            "format": image_info["format"],
+            "width": image_info["width"],
+            "height": image_info["height"],
+            "originalBytes": len(plain),
+            "note": image_info["note"],
+        },
+        "rounds": rounds,
+        "dataFile": f"{name}.bin",
+        "dataEncoding": "binary",
+        "stream": "xorshift128 seeded by hash128(imgpass-v7/id/password)",
+    }
+
+    return meta, cipher
+
+
+def rebuild_index() -> None:
+    items: list[str] = []
+
+    if DATA.exists():
+        for p in sorted(DATA.glob("*.json"), key=lambda x: x.name.lower()):
+            name = p.name[:-5]
+            if (I / name / "index.html").exists():
+                items.append(name)
+
+    if items:
+        lis = "\n".join(
+            f'        <li><a href="./{quote(name)}/">{name}</a></li>'
+            for name in items
+        )
+    else:
+        lis = "        <li><span>no images</span></li>"
+
+    html = (
+        '<!doctype html>\n'
+        '<html lang="ja">'
+        '<head>'
+        '<meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<title>Images</title>'
+        '<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">'
+        '<link rel="stylesheet" href="../assets/style.css">'
+        '</head>'
+        '<body>'
+        '<main class="wrap">'
+        '<section class="card list-card">'
+        '<h1 class="list-title">Images</h1>'
+        '<ul class="image-list">\n'
+        + lis +
+        '\n      </ul>'
+        '</section>'
+        '</main>'
+        '</body>'
+        '</html>'
+    )
+
+    I.mkdir(exist_ok=True)
+    (I / "index.html").write_text(html, encoding="utf-8")
+
+
+def write_outputs(image_path: Path, meta: dict, cipher: bytes, force: bool) -> tuple[Path, Path, Path]:
+    if not TPL.exists():
+        raise FileNotFoundError(f"{TPL} がありません。")
+
+    name = image_path.name
+
+    page_dir = I / name
+    page_path = page_dir / "index.html"
+
+    json_path = DATA / f"{name}.json"
+    bin_path = DATA / f"{name}.bin"
+
+    page_dir.mkdir(parents=True, exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
+
+    for p in (page_path, json_path, bin_path):
+        if p.exists() and not force:
+            raise FileExistsError(f"{p} は既にあります。--force で上書きできます。")
+
+    shutil.copyfile(TPL, page_path)
+
+    json_path.write_text(
+        json.dumps(meta, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    bin_path.write_bytes(cipher)
+
+    rebuild_index()
+
+    return page_path, json_path, bin_path
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="画像ファイルを GitHub Pages 用のパスワード付き data に変換します。"
+    )
+
+    parser.add_argument("image", nargs="?", help="例: ./p/sample.jpg")
+    parser.add_argument("--password", help="省略時は対話入力します。")
+    parser.add_argument("--rounds", type=int, default=0, help="追加ハッシュ回数。既定: 0")
+    parser.add_argument("--id", dest="file_id", help="seed に混ぜる固定 ID。既定: /i/<filename>/")
+    parser.add_argument("--force", action="store_true", help="既存ファイルを上書きします。")
+    parser.add_argument("--rebuild-index", action="store_true", help="i/index.html だけ再生成します。")
+
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+
+    if args.rebuild_index and not args.image:
+        rebuild_index()
+        print("generated: i/index.html")
+        return 0
+
+    if not args.image:
+        print("error: image is required unless --rebuild-index is used", file=sys.stderr)
+        return 1
+
+    if args.rounds < 0:
+        print("error: --rounds は 0 以上にしてください。", file=sys.stderr)
+        return 1
+
+    image_path = Path(args.image)
+
+    if not image_path.is_absolute():
+        image_path = (Path.cwd() / image_path).resolve()
+
+    if not image_path.exists():
+        print(f"画像ファイルが存在しません: {image_path}", file=sys.stderr)
+        return 1
+
+    if not image_path.is_file():
+        print(f"ファイルではありません: {image_path}", file=sys.stderr)
+        return 1
+
+    password = args.password
+
+    if password is None:
+        password = getpass.getpass("password: ")
+        password2 = getpass.getpass("password again: ")
+
+        if password != password2:
+            print("パスワードが一致しません。", file=sys.stderr)
+            return 1
+
+    try:
+        meta, cipher = build_data(image_path, password, args.rounds, args.file_id)
+        page_path, json_path, bin_path = write_outputs(image_path, meta, cipher, args.force)
+
     except Exception as e:
-        print(f'error: {e}',file=sys.stderr); return 1
-    print(f'generated: {page.relative_to(ROOT)}'); print(f'generated: {data_path.relative_to(ROOT)}'); print('generated: i/index.html'); print(f"source  : {data['source']['format']} {data['width']}x{data['height']}"); print(f'url path: /i/{path.name}/'); return 0
-if __name__=='__main__': raise SystemExit(main())
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    print(f"generated: {page_path.relative_to(ROOT)}")
+    print(f"generated: {json_path.relative_to(ROOT)}")
+    print(f"generated: {bin_path.relative_to(ROOT)}")
+    print("generated: i/index.html")
+    print(f"source  : {meta['source']['format']} {meta['source']['width']}x{meta['source']['height']}")
+    print(f"mime    : {meta['mime']}")
+    print(f"bytes   : {meta['source']['originalBytes']} -> {len(cipher)}")
+    print(f"url path: /i/{image_path.name}/")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

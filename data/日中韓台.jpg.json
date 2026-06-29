@@ -1,3 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:eeca46ca7d7d6f58f2de75f35b85b221f409aa764b583cb2cea2dae608582198
-size 419
+{"version":7,"type":"file-bytes-xor-xorshift128-fast-seed","name":"日中韓台.jpg","id":"/i/日中韓台.jpg/","mime":"image/jpeg","source":{"format":"JPEG","width":11081,"height":6144,"originalBytes":15857701,"note":"Stored as encrypted original file bytes. Not expanded to RGBA."},"rounds":0,"dataFile":"日中韓台.jpg.bin","dataEncoding":"binary","stream":"xorshift128 seeded by hash128(imgpass-v7/id/password)"}

@@ -46,7 +46,7 @@ def rebuild_index():
             name=p.name[:-5]
             if (I/name/'index.html').exists(): items.append(name)
     lis='\n'.join(f'        <li><a href="./{name}/">{name}</a></li>' for name in items) or '        <li><span>no images</span></li>'
-    html='<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Images</title><link rel="stylesheet" href="../assets/style.css"></head><body><main class="wrap"><section class="card list-card"><h1 class="list-title">Images</h1><ul class="image-list">\n'+lis+'\n      </ul></section></main></body></html>'
+    html='<!doctype html>\n<html lang="ja">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>Images</title>\n  <link rel="icon" href="../assets/icon.png" type="image/png">\n  <link rel="apple-touch-icon" href="../assets/icon.png">\n  <link rel="stylesheet" href="../assets/style.css">\n</head>\n<body>\n  <main class="wrap">\n  <section class="card list-card">\n    <h1 class="list-title">Images</h1>\n    <ul class="image-list">\n'+lis+'\n      </ul>\n    </section>\n  </main>\n</body>\n</html>'
     I.mkdir(exist_ok=True); (I/'index.html').write_text(html,encoding='utf-8')
 def main():
     ap=argparse.ArgumentParser(description='画像から GitHub Pages 用のパスワード画像 data を生成します。')

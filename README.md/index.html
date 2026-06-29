@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>README.md</title>
+  <link rel="icon" href="../assets/icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/icon.png">
+  <style>
+    :root {
+      --bg: #08090d;
+      --fg: #f7f7fb;
+      --muted: #a8afbd;
+      --line: rgba(255, 255, 255, .16);
+      --card: rgba(255, 255, 255, .075);
+      --accent: #9cf7ff;
+      --accent2: #ff9ce8;
+      --accent3: #b8ff9c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--fg);
+      background:
+        radial-gradient(circle at 12% 18%, rgba(156, 247, 255, .22), transparent 30%),
+        radial-gradient(circle at 86% 12%, rgba(255, 156, 232, .18), transparent 28%),
+        radial-gradient(circle at 50% 92%, rgba(184, 255, 156, .12), transparent 30%),
+        var(--bg);
+      overflow-x: hidden;
+    }
+
+    #field {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      opacity: .62;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: .08;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(8, 9, 13, .62);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 70px rgba(0, 0, 0, .24);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .brand-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #111;
+      box-shadow: 0 0 26px rgba(156, 247, 255, .55);
+    }
+
+    .nav {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav button,
+    .link-pill {
+      border: 1px solid transparent;
+      color: var(--fg);
+      background: rgba(255, 255, 255, .08);
+      border-radius: 999px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 800;
+      text-decoration: none;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .nav button:hover,
+    .nav button.active,
+    .link-pill:hover {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, .14);
+    }
+
+    .hero {
+      min-height: 62vh;
+      display: grid;
+      align-items: center;
+      padding: 56px 0 30px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 26px;
+      align-items: center;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-weight: 900;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 14px 0 18px;
+      font-size: clamp(44px, 9vw, 112px);
+      line-height: .86;
+      letter-spacing: -.075em;
+    }
+
+    .gradient {
+      background: linear-gradient(90deg, #fff, var(--accent), var(--accent2), #fff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 240% 100%;
+      animation: shine 7s linear infinite;
+    }
+
+    @keyframes shine {
+      to {
+        background-position: 240% 0;
+      }
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 21px);
+      line-height: 1.8;
+      max-width: 720px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .cta,
+    .ghost {
+      border-radius: 18px;
+      padding: 13px 16px;
+      text-decoration: none;
+      font-weight: 900;
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .cta {
+      color: #061014;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      box-shadow: 0 16px 48px rgba(156, 247, 255, .22);
+    }
+
+    .ghost {
+      color: var(--fg);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .07);
+    }
+
+    .orb-card {
+      min-height: 380px;
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .045));
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        inset 0 1px rgba(255, 255, 255, .14),
+        0 28px 90px rgba(0, 0, 0, .30);
+      transition: transform .18s ease;
+    }
+
+    .orb {
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      filter: blur(2px);
+      mix-blend-mode: screen;
+      animation: float 9s ease-in-out infinite;
+    }
+
+    .orb.a {
+      background: rgba(156, 247, 255, .55);
+      top: 36px;
+      left: 34px;
+    }
+
+    .orb.b {
+      background: rgba(255, 156, 232, .45);
+      right: 32px;
+      top: 120px;
+      animation-delay: -3s;
+    }
+
+    .orb.c {
+      background: rgba(184, 255, 156, .38);
+      left: 120px;
+      bottom: 40px;
+      animation-delay: -6s;
+    }
+
+    @keyframes float {
+      50% {
+        transform: translate3d(22px, -18px, 0) scale(1.08);
+      }
+    }
+
+    .lock-mark {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 112px;
+      filter: drop-shadow(0 24px 45px rgba(0, 0, 0, .35));
+      transform: rotate(-6deg);
+    }
+
+    .section {
+      margin-top: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 24px;
+      background: var(--card);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 22px 80px rgba(0, 0, 0, .22);
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 28px;
+    }
+
+    .fancy {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    .fancy li {
+      padding: 16px 16px 16px 48px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, .06);
+      border-radius: 20px;
+      color: #e9ecf5;
+      line-height: 1.75;
+      position: relative;
+    }
+
+    .fancy li::before {
+      content: "✦";
+      position: absolute;
+      left: 18px;
+      top: 17px;
+      color: var(--accent);
+    }
+
+    .mini {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .strong {
+      color: #fff;
+      font-weight: 900;
+      text-shadow: 0 0 20px rgba(156, 247, 255, .28);
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .stat {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, .06);
+    }
+
+    .stat b {
+      display: block;
+      font-size: 31px;
+      margin-bottom: 4px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, .06);
+      padding: 14px;
+      min-height: 110px;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+    }
+
+    .step span {
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: .16em;
+    }
+
+    .terminal {
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #05070b;
+    }
+
+    .terminal-bar {
+      display: flex;
+      gap: 7px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ff5f56;
+    }
+
+    .dot:nth-child(2) {
+      background: #ffbd2e;
+    }
+
+    .dot:nth-child(3) {
+      background: #27c93f;
+    }
+
+    pre {
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      color: #c8f7d2;
+      line-height: 1.7;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: .7s ease;
+    }
+
+    .reveal.show {
+      opacity: 1;
+      transform: none;
+    }
+
+    .md-panel {
+      display: none;
+    }
+
+    .md-panel.show {
+      display: block;
+    }
+
+    .footer {
+      color: var(--muted);
+      text-align: center;
+      padding: 30px 0 0;
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid,
+      .grid3,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        letter-spacing: -.04em;
+      }
+
+      .orb-card {
+        min-height: 260px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        border-radius: 24px;
+        flex-direction: column;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field"></canvas>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-badge">♡</span>
+        <span>README.md</span>
+      </div>
+      <nav class="nav" aria-label="language">
+        <button type="button" class="active" data-lang="ja">日本語</button>
+        <button type="button" data-lang="en">English</button>
+        <button type="button" data-lang="zh">中文</button>
+        <button type="button" id="plainMdButton">素朴なmd</button>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="kicker" data-i18n="kicker"></div>
+          <h1><span class="gradient">Password<br>Image<br>Pages</span></h1>
+          <p class="lead" data-i18n="lead"></p>
+          <div class="hero-actions">
+            <a class="cta" href="../i/" data-i18n="imagesLink"></a>
+            <button type="button" class="ghost" id="plainMdButton2"></button>
+          </div>
+        </div>
+
+        <div class="orb-card" id="tilt">
+          <div class="orb a"></div>
+          <div class="orb b"></div>
+          <div class="orb c"></div>
+          <div class="lock-mark">🔐</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal panel">
+      <h2 data-i18n="langTitle"></h2>
+      <ul class="fancy">
+        <li>
+          <span data-i18n="purposePrefix"></span>
+          <span class="strong" data-i18n="purposeStrong"></span>
+          <span data-i18n="purposeSuffix"></span>
+        </li>
+        <li>
+          <span data-i18n="folderLine"></span>
+          <div class="mini" data-i18n="folderSub"></div>
+        </li>
+        <li>
+          <span data-i18n="thanksPrefix"></span>
+          <span class="strong" data-i18n="thanksStrong"></span>
+          <span data-i18n="thanksSuffix"></span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section reveal grid3">
+      <div class="stat">
+        <b data-count="0">0</b>
+        <span data-i18n="stat1"></span>
+      </div>
+      <div class="stat">
+        <b data-count="1">0</b>
+        <span data-i18n="stat2"></span>
+      </div>
+      <div class="stat">
+        <b data-count="100">0</b>
+        <span data-i18n="stat3"></span>
+      </div>
+    </section>
+
+    <section class="section reveal panel">
+      <h2 data-i18n="flowTitle"></h2>
+      <div class="flow">
+        <div class="step">
+          <span>01</span>
+          <b data-i18n="flow1Title"></b>
+          <small data-i18n="flow1Text"></small>
+        </div>
+        <div class="step">
+          <span>02</span>
+          <b data-i18n="flow2Title"></b>
+          <small data-i18n="flow2Text"></small>
+        </div>
+        <div class="step">
+          <span>03</span>
+          <b data-i18n="flow3Title"></b>
+          <small data-i18n="flow3Text"></small>
+        </div>
+        <div class="step">
+          <span>04</span>
+          <b data-i18n="flow4Title"></b>
+          <small data-i18n="flow4Text"></small>
+        </div>
+        <div class="step">
+          <span>05</span>
+          <b data-i18n="flow5Title"></b>
+          <small data-i18n="flow5Text"></small>
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal terminal">
+      <div class="terminal-bar">
+        <i class="dot"></i>
+        <i class="dot"></i>
+        <i class="dot"></i>
+      </div>
+      <pre id="type"></pre>
+    </section>
+
+    <section class="section panel md-panel" id="plainMdPanel">
+      <h2 data-i18n="plainMdTitle"></h2>
+      <pre id="plainMdContent">loading...</pre>
+    </section>
+
+    <footer class="footer">
+      /README.md/
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const texts = {
+        ja: {
+          kicker: "not a folder mistake",
+          lead: "公開されたソースコードの上で、パスワード付き画像共有を簡易的に成立させるための、小さな静的サイトです。",
+          imagesLink: "画像一覧へ",
+          plainMdButton: "素朴なmd",
+          langTitle: "日本語",
+          purposePrefix: "このリポジトリの目的は",
+          purposeStrong: "「ソースコードが公開された状態で、パスワード付きの画像共有を簡易的に実装すること」",
+          purposeSuffix: "です。",
+          folderLine: "README.mdをフォルダだと思いこんでるアホではないです。",
+          folderSub: "~/README.mdでindex.htmlを読み込ませるための苦肉の策",
+          thanksPrefix: "制作にあたり、多大なるご助力を賜りました",
+          thanksStrong: "GPT5.5 Think(Microsoft365 Copilot提供)様",
+          thanksSuffix: "に深く感謝申し上げます。",
+          stat1: "server auth",
+          stat2: "password per image",
+          stat3: "% static pages mood",
+          flowTitle: "Flow",
+          flow1Title: "Source visible",
+          flow1Text: "ソースは公開。",
+          flow2Title: "Data visible",
+          flow2Text: "data も公開。",
+          flow3Title: "Password",
+          flow3Text: "入力から復元。",
+          flow4Title: "Blob image",
+          flow4Text: "画像 URL を生成。",
+          flow5Title: "GitHub Pages",
+          flow5Text: "静的に配信。",
+          plainMdTitle: "素朴なmd"
+        },
+        en: {
+          kicker: "not a folder mistake",
+          lead: "A small static site for simply making password-protected image sharing work on top of publicly available source code.",
+          imagesLink: "Images",
+          plainMdButton: "plain md",
+          langTitle: "English",
+          purposePrefix: "The purpose of this repository is to",
+          purposeStrong: "“simply implement password-protected image sharing while the source code is publicly available.”",
+          purposeSuffix: "",
+          folderLine: "I am not an idiot who thinks README.md is a folder.",
+          folderSub: "It is a desperate workaround to make ~/README.md load index.html.",
+          thanksPrefix: "I would like to express my deep gratitude to",
+          thanksStrong: "GPT5.5 Think, provided by Microsoft365 Copilot",
+          thanksSuffix: "for its tremendous assistance in the creation of this project.",
+          stat1: "server auth",
+          stat2: "password per image",
+          stat3: "% static pages mood",
+          flowTitle: "Flow",
+          flow1Title: "Source visible",
+          flow1Text: "The source code is public.",
+          flow2Title: "Data visible",
+          flow2Text: "The data files are public too.",
+          flow3Title: "Password",
+          flow3Text: "Restore from input.",
+          flow4Title: "Blob image",
+          flow4Text: "Generate an image URL.",
+          flow5Title: "GitHub Pages",
+          flow5Text: "Serve statically.",
+          plainMdTitle: "plain md"
+        },
+        zh: {
+          kicker: "not a folder mistake",
+          lead: "这是一个小型静态网站，用于在源代码公开的前提下，简易地实现带密码的图片共享。",
+          imagesLink: "图片列表",
+          plainMdButton: "朴素 md",
+          langTitle: "中文",
+          purposePrefix: "本仓库的目的是",
+          purposeStrong: "“在源代码公开的状态下，简易地实现带密码的图片共享。”",
+          purposeSuffix: "",
+          folderLine: "我并不是把 README.md 当成文件夹的笨蛋。",
+          folderSub: "这是为了让 ~/README.md 加载 index.html 而采取的无奈之举。",
+          thanksPrefix: "在制作过程中，承蒙",
+          thanksStrong: "由 Microsoft365 Copilot 提供的 GPT5.5 Think",
+          thanksSuffix: "给予了大量帮助，在此致以深切感谢。",
+          stat1: "server auth",
+          stat2: "password per image",
+          stat3: "% static pages mood",
+          flowTitle: "流程",
+          flow1Title: "Source visible",
+          flow1Text: "源代码公开。",
+          flow2Title: "Data visible",
+          flow2Text: "data 也公开。",
+          flow3Title: "Password",
+          flow3Text: "通过输入进行复原。",
+          flow4Title: "Blob image",
+          flow4Text: "生成图片 URL。",
+          flow5Title: "GitHub Pages",
+          flow5Text: "静态发布。",
+          plainMdTitle: "朴素 md"
+        }
+      };
+
+      let currentLang = "ja";
+
+      const langButtons = Array.from(document.querySelectorAll("[data-lang]"));
+      const plainButtons = [
+        document.getElementById("plainMdButton"),
+        document.getElementById("plainMdButton2")
+      ];
+
+      function setLang(lang) {
+        currentLang = lang;
+        document.documentElement.lang = lang === "zh" ? "zh" : lang;
+
+        langButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.lang === lang);
+        });
+
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          const key = el.dataset.i18n;
+          el.textContent = texts[lang][key] ?? "";
+        });
+
+        plainButtons.forEach((button) => {
+          button.textContent = texts[lang].plainMdButton;
+        });
+      }
+
+      langButtons.forEach((button) => {
+        button.addEventListener("click", () => setLang(button.dataset.lang));
+      });
+
+      setLang("ja");
+
+      const plainPanel = document.getElementById("plainMdPanel");
+      const plainContent = document.getElementById("plainMdContent");
+      let mdLoaded = false;
+
+      async function showPlainMd() {
+        plainPanel.classList.add("show");
+        plainPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        if (mdLoaded) return;
+
+        try {
+          const res = await fetch("./README.md", { cache: "no-store" });
+          if (!res.ok) throw new Error(`failed to load README.md (${res.status})`);
+          plainContent.textContent = await res.text();
+          mdLoaded = true;
+        } catch (error) {
+          console.error(error);
+          plainContent.textContent = "README.md could not be loaded.";
+        }
+      }
+
+      plainButtons.forEach((button) => {
+        button.addEventListener("click", showPlainMd);
+      });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          entry.target.classList.add("show");
+
+          entry.target.querySelectorAll("[data-count]").forEach((el) => {
+            if (el.dataset.done) return;
+            el.dataset.done = "1";
+
+            const target = Number(el.dataset.count);
+            let value = 0;
+            const step = Math.max(1, Math.ceil(target / 38));
+
+            const timer = setInterval(() => {
+              value += step;
+              if (value >= target) {
+                value = target;
+                clearInterval(timer);
+              }
+              el.textContent = value;
+            }, 22);
+          });
+        });
+      }, { threshold: .18 });
+
+      document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+
+      const terminal = document.getElementById("type");
+      const lines = [
+        "python gen.py ./p/sample.png --force",
+        "generated: i/sample.png/index.html",
+        "generated: data/sample.png.json",
+        "generated: i/index.html",
+        "deploy: GitHub Pages"
+      ];
+
+      let text = "";
+      let line = 0;
+      let ch = 0;
+
+      function type() {
+        if (line >= lines.length) return;
+
+        text += lines[line][ch++] || "\n";
+        terminal.textContent = text;
+
+        if (ch > lines[line].length) {
+          line++;
+          ch = 0;
+        }
+
+        setTimeout(type, ch === 0 ? 360 : 24);
+      }
+
+      type();
+
+      const tilt = document.getElementById("tilt");
+
+      tilt.addEventListener("pointermove", (event) => {
+        const rect = tilt.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width - .5;
+        const y = (event.clientY - rect.top) / rect.height - .5;
+        tilt.style.transform = `perspective(900px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg)`;
+      });
+
+      tilt.addEventListener("pointerleave", () => {
+        tilt.style.transform = "";
+      });
+
+      const canvas = document.getElementById("field");
+      const ctx = canvas.getContext("2d");
+
+      let width;
+      let height;
+      let particles;
+
+      function resize() {
+        width = canvas.width = innerWidth * devicePixelRatio;
+        height = canvas.height = innerHeight * devicePixelRatio;
+
+        particles = Array.from(
+          { length: Math.min(120, Math.floor(innerWidth / 10)) },
+          () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - .5) * .42,
+            vy: (Math.random() - .5) * .42,
+            r: Math.random() * 2 + 1
+          })
+        );
+      }
+
+      addEventListener("resize", resize);
+      resize();
+
+      function draw() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(255,255,255,.64)";
+        ctx.strokeStyle = "rgba(156,247,255,.12)";
+
+        for (const p of particles) {
+          p.x = (p.x + p.vx + width) % width;
+          p.y = (p.y + p.vy + height) % height;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * devicePixelRatio, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const a = particles[i];
+            const b = particles[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const d = Math.hypot(dx, dy);
+            const max = 150 * devicePixelRatio;
+
+            if (d < max) {
+              ctx.globalAlpha = 1 - d / max;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      draw();
+    })();
+  </script>
+</body>
+</html>
